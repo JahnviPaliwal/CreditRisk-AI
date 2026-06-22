@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CreditRisk AI — Loan Default Prediction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15161b;
+    --ink-deep:#0d0e12;
+    --paper:#ece6d6;
+    --paper-dim:#d8d0ba;
+    --brass:#c9a227;
+    --brass-bright:#e3bf4a;
+    --text:#ece6d6;
+    --text-dim:rgba(236,230,214,0.58);
+    --text-faint:rgba(236,230,214,0.34);
+    --approve:#4f7a5e;
+    --approve-bright:#6fa57e;
+    --review:#bd8230;
+    --reject:#a14638;
+    --rule:rgba(236,230,214,0.14);
+    --rule-strong:rgba(236,230,214,0.26);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+  }
+  h1,h2,h3{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  a{color:var(--brass-bright); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 32px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--brass);
+  }
+
+  /* ===== NAV ===== */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(13,14,18,0.86);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--rule);
+  }
+  nav .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    height:60px;
+  }
+  .brand{
+    font-family:'Fraunces',serif; font-weight:600; font-size:18px; color:var(--text);
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot{width:7px; height:7px; border-radius:50%; background:var(--brass); display:inline-block;}
+  .navlink{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.06em;
+    color:var(--text-dim); border:1px solid var(--rule-strong); padding:8px 14px; border-radius:3px;
+    transition:border-color .2s, color .2s;
+  }
+  .navlink:hover{border-color:var(--brass); color:var(--brass-bright); text-decoration:none;}
+
+  /* ===== HERO ===== */
+  header.hero{padding:88px 0 64px; border-bottom:1px solid var(--rule);}
+  .hero h1{
+    font-size:clamp(40px,6vw,68px);
+    line-height:1.04;
+    max-width:820px;
+  }
+  .hero h1 em{font-style:italic; color:var(--brass-bright); font-weight:500;}
+  .hero p.lede{
+    margin-top:22px; max-width:560px; font-size:18px; color:var(--text-dim);
+  }
+  .ledger-strip{
+    margin-top:48px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    border:1px solid var(--rule-strong);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .ledger-cell{
+    padding:20px 22px;
+    border-right:1px solid var(--rule);
+    background:linear-gradient(180deg, rgba(236,230,214,0.03), transparent);
+  }
+  .ledger-cell:last-child{border-right:none;}
+  .ledger-cell .num{font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:600; color:var(--paper);}
+  .ledger-cell .lbl{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin-top:6px;}
+
+  /* ===== SECTION SHARED ===== */
+  section{padding:72px 0; border-bottom:1px solid var(--rule);}
+  section h2{font-size:clamp(28px,3.4vw,38px); max-width:680px;}
+  .section-head{display:flex; align-items:baseline; gap:16px; margin-bottom:36px;}
+  .section-num{font-family:'IBM Plex Mono',monospace; color:var(--text-faint); font-size:13px;}
+
+  /* ===== PROBLEM ===== */
+  .problem-grid{display:grid; grid-template-columns:1.1fr 1fr; gap:48px; margin-top:36px; align-items:start;}
+  .problem-grid p{color:var(--text-dim); max-width:480px;}
+  .issue-list{list-style:none; margin:0; padding:0; border-top:1px solid var(--rule);}
+  .issue-list li{
+    padding:16px 0; border-bottom:1px solid var(--rule);
+    display:flex; gap:14px; color:var(--text-dim); font-size:15px;
+  }
+  .issue-list li::before{content:"—"; color:var(--brass); flex-shrink:0;}
+  .stat-block{
+    border:1px solid var(--rule-strong); border-radius:4px; padding:26px;
+    background:rgba(236,230,214,0.02);
+  }
+  .stat-block .big{font-family:'Fraunces',serif; font-size:54px; color:var(--reject); font-weight:600; line-height:1;}
+  .stat-block .cap{margin-top:10px; color:var(--text-dim); font-size:14px;}
+
+  /* ===== APPROACH ===== */
+  .thresholds{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; margin-top:32px; border:1px solid var(--rule-strong); border-radius:4px; overflow:hidden;}
+  .threshold{padding:24px; background:rgba(236,230,214,0.02);}
+  .threshold .tag{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em;
+    padding:4px 10px; border-radius:2px; text-transform:uppercase; margin-bottom:14px;
+  }
+  .tag.approve{background:rgba(79,122,94,0.22); color:var(--approve-bright);}
+  .tag.review{background:rgba(189,130,48,0.22); color:#e0a861;}
+  .tag.reject{background:rgba(161,70,56,0.22); color:#d68674;}
+  .threshold .range{font-family:'IBM Plex Mono',monospace; font-size:22px; color:var(--paper);}
+  .threshold .desc{font-size:13px; color:var(--text-dim); margin-top:8px;}
+
+  .importance{margin-top:48px;}
+  .imp-row{display:grid; grid-template-columns:200px 1fr 70px; gap:16px; align-items:center; padding:14px 0; border-bottom:1px solid var(--rule);}
+  .imp-row .name{font-size:14px; color:var(--text);}
+  .imp-row .name .sub{display:block; color:var(--text-faint); font-size:12px; margin-top:2px;}
+  .imp-track{height:8px; background:rgba(236,230,214,0.08); border-radius:4px; overflow:hidden;}
+  .imp-fill{height:100%; background:linear-gradient(90deg, var(--brass), var(--brass-bright)); border-radius:4px;}
+  .imp-row .val{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-dim); text-align:right;}
+
+  /* ===== DEMO (signature) ===== */
+  .demo-note{color:var(--text-dim); max-width:620px; margin-top:12px; font-size:14px;}
+  .demo-grid{
+    margin-top:40px;
+    display:grid; grid-template-columns:1.15fr 0.85fr; gap:0;
+    border:1px solid var(--rule-strong); border-radius:6px; overflow:hidden;
+    background:var(--ink-deep);
+  }
+  .demo-inputs{padding:32px; border-right:1px solid var(--rule-strong);}
+  .field{margin-bottom:22px;}
+  .field-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .field label{font-size:13px; color:var(--text-dim);}
+  .field .fval{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--brass-bright);}
+  input[type=range]{
+    width:100%; -webkit-appearance:none; height:3px; background:var(--rule-strong); border-radius:2px; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--brass); cursor:pointer; border:2px solid var(--ink-deep); box-shadow:0 0 0 1px var(--brass);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:14px; border-radius:50%; background:var(--brass); cursor:pointer; border:2px solid var(--ink-deep);
+  }
+  select{
+    width:100%; background:var(--ink); border:1px solid var(--rule-strong); color:var(--text);
+    padding:9px 10px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; border-radius:3px;
+  }
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+
+  .demo-output{padding:32px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; position:relative;}
+  .gauge-wrap{position:relative; width:220px; height:130px; margin-top:6px;}
+  .pd-readout{
+    text-align:center; margin-top:6px;
+  }
+  .pd-readout .pd-num{font-family:'Fraunces',serif; font-size:46px; font-weight:600; line-height:1;}
+  .pd-readout .pd-lbl{font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin-top:4px;}
+
+  .stamp{
+    margin-top:22px; padding:10px 26px; border:3px solid currentColor; border-radius:4px;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:18px; letter-spacing:0.12em;
+    transform:rotate(-4deg); display:inline-block;
+  }
+  .stamp.approve{color:var(--approve-bright);}
+  .stamp.review{color:#e0a861;}
+  .stamp.reject{color:#d68674;}
+
+  .reasons{margin-top:26px; width:100%; border-top:1px solid var(--rule);}
+  .reason-line{
+    display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--rule); font-size:12.5px; color:var(--text-dim);
+  }
+  .reason-line .arrow{font-family:'IBM Plex Mono',monospace; flex-shrink:0;}
+  .reason-line .arrow.up{color:var(--reject);}
+  .reason-line .arrow.down{color:var(--approve-bright);}
+
+  .demo-disclaimer{
+    grid-column:1 / -1; padding:14px 32px; font-size:12px; color:var(--text-faint);
+    border-top:1px solid var(--rule); background:rgba(236,230,214,0.015);
+  }
+
+  /* ===== VALIDATION ===== */
+  table.cases{width:100%; border-collapse:collapse; margin-top:32px; font-size:14px;}
+  table.cases th{
+    text-align:left; font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:0.07em; color:var(--text-faint); padding:0 0 12px; border-bottom:1px solid var(--rule-strong);
+  }
+  table.cases td{padding:14px 0; border-bottom:1px solid var(--rule); color:var(--text-dim);}
+  table.cases td:first-child{color:var(--text);}
+  table.cases .pd{font-family:'IBM Plex Mono',monospace; color:var(--paper);}
+  table.cases .ok{color:var(--approve-bright); font-family:'IBM Plex Mono',monospace; font-size:12px;}
+  .metric-row{display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-top:48px;}
+  .metric-card{border-left:2px solid var(--brass); padding-left:16px;}
+  .metric-card .v{font-family:'IBM Plex Mono',monospace; font-size:26px; color:var(--paper);}
+  .metric-card .k{font-size:12px; color:var(--text-dim); margin-top:6px;}
+
+  /* ===== HONEST / LIMITATIONS ===== */
+  .footnote-grid{display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-top:36px;}
+  .footnote-grid h3{font-size:16px; font-family:'IBM Plex Mono',monospace; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; font-weight:500; margin-bottom:16px;}
+  .footnote-grid ul{margin:0; padding:0; list-style:none;}
+  .footnote-grid li{padding:10px 0; border-bottom:1px solid var(--rule); font-size:14px; color:var(--text-dim);}
+
+  /* ===== FOOTER ===== */
+  footer{padding:48px 0; }
+  footer .wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;}
+  footer .meta{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-faint);}
+  .cta-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:13px; letter-spacing:0.05em;
+    background:var(--brass); color:var(--ink-deep); padding:11px 20px; border-radius:3px; font-weight:600;
+  }
+  .cta-btn:hover{background:var(--brass-bright); text-decoration:none;}
+
+  @media (max-width: 860px){
+    .ledger-strip{grid-template-columns:repeat(2,1fr);}
+    .ledger-cell:nth-child(2){border-right:none;}
+    .problem-grid{grid-template-columns:1fr;}
+    .thresholds{grid-template-columns:1fr;}
+    .demo-grid{grid-template-columns:1fr;}
+    .demo-inputs{border-right:none; border-bottom:1px solid var(--rule-strong);}
+    .imp-row{grid-template-columns:120px 1fr 50px;}
+    .metric-row{grid-template-columns:1fr 1fr;}
+    .footnote-grid{grid-template-columns:1fr;}
+    .two-col{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span>CreditRisk AI</div>
+    <a class="navlink" href="https://github.com/JahnviPaliwal/CreditRisk-AI" target="_blank" rel="noopener">View source ↗</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Loan default prediction · XGBoost</p>
+    <h1>Will they pay it back?<br><em>A model that explains its answer.</em></h1>
+    <p class="lede">CreditRisk AI scores a loan application's probability of default in real time, then states its decision — approve, review, or reject — alongside the three reasons that drove it.</p>
+    <div class="ledger-strip">
+      <div class="ledger-cell"><div class="num">92.4%</div><div class="lbl">Test AUC</div></div>
+      <div class="ledger-cell"><div class="num">92.0%</div><div class="lbl">Precision</div></div>
+      <div class="ledger-cell"><div class="num">63.9%</div><div class="lbl">Recall</div></div>
+      <div class="ledger-cell"><div class="num">32,581</div><div class="lbl">Applications trained on</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="section-head"><span class="section-num">01</span><h2>Lenders are flying blind</h2></div>
+    <div class="problem-grid">
+      <div>
+        <p>In the dataset behind this model, 7,102 of 32,581 borrowers — better than one in five — defaulted on their loan. Traditional underwriting struggles to catch them ahead of time.</p>
+        <ul class="issue-list">
+          <li>Many applicants, especially MSMEs, have no formal credit history to score against.</li>
+          <li>Manual underwriting is slow, and two reviewers rarely agree on the same case.</li>
+          <li>When a loan is rejected, there's usually no record of why — so nothing improves.</li>
+        </ul>
+      </div>
+      <div class="stat-block">
+        <div class="big">21.8%</div>
+        <div class="cap">of applicants in the training data defaulted — 7,102 out of 32,581 loans. That base rate is what any underwriting process, manual or automated, has to beat.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="approach">
+  <div class="wrap">
+    <div class="section-head"><span class="section-num">02</span><h2>How the model decides</h2></div>
+    <p style="color:var(--text-dim); max-width:620px;">An XGBoost classifier reads ten features off the application — income, loan size, interest rate, credit grade, employment and credit history — and outputs a single probability of default. That probability is then routed through three fixed thresholds:</p>
+
+    <div class="thresholds">
+      <div class="threshold">
+        <span class="tag approve">Approve</span>
+        <div class="range">PD &lt; 30%</div>
+        <div class="desc">Safe borrower. About 70% of applicants land here.</div>
+      </div>
+      <div class="threshold">
+        <span class="tag review">Review</span>
+        <div class="range">30% – 50%</div>
+        <div class="desc">Moderate risk, sent to a human. ~10% of applicants.</div>
+      </div>
+      <div class="threshold">
+        <span class="tag reject">Reject</span>
+        <div class="range">PD &gt; 50%</div>
+        <div class="desc">High risk of default. ~20% of applicants.</div>
+      </div>
+    </div>
+
+    <div class="importance">
+      <p class="eyebrow" style="margin-bottom:18px;">What the model learned matters most</p>
+      <div class="imp-row">
+        <div class="name">Loan-to-income ratio<span class="sub">borrowing 50% of income vs. 10%</span></div>
+        <div class="imp-track"><div class="imp-fill" style="width:100%"></div></div>
+        <div class="val">174.3</div>
+      </div>
+      <div class="imp-row">
+        <div class="name">Credit grade<span class="sub">grade A rarely defaults, grade F often does</span></div>
+        <div class="imp-track"><div class="imp-fill" style="width:81.8%"></div></div>
+        <div class="val">142.5</div>
+      </div>
+      <div class="imp-row">
+        <div class="name">Home ownership<span class="sub">renters carry more risk than owners</span></div>
+        <div class="imp-track"><div class="imp-fill" style="width:74.2%"></div></div>
+        <div class="val">129.3</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="section-head"><span class="section-num">03</span><h2>Try an application</h2></div>
+    <p class="demo-note">Move the sliders to sketch out a borrower. The read-out below reconstructs the trained model's logic and thresholds from the project's documented feature weights, so you can feel how each factor moves the decision — the full XGBoost + SHAP pipeline lives in the repo's notebook.</p>
+
+    <div class="demo-grid">
+      <div class="demo-inputs">
+        <div class="field">
+          <div class="field-row"><label>Annual income</label><span class="fval mono" id="v-income">$80,000</span></div>
+          <input type="range" id="income" min="5000" max="150000" step="1000" value="80000">
+        </div>
+        <div class="field">
+          <div class="field-row"><label>Loan amount requested</label><span class="fval mono" id="v-loan">$5,000</span></div>
+          <input type="range" id="loan" min="1000" max="25000" step="500" value="5000">
+        </div>
+        <div class="field">
+          <div class="field-row"><label>Interest rate</label><span class="fval mono" id="v-rate">5.0%</span></div>
+          <input type="range" id="rate" min="5" max="25" step="0.1" value="5">
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <div class="field-row"><label>Credit grade</label><span class="fval mono" id="v-grade">A</span></div>
+            <select id="grade">
+              <option value="1">A</option><option value="2">B</option><option value="3">C</option>
+              <option value="4">D</option><option value="5">E</option><option value="6">F</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Home status</label><span class="fval mono" id="v-home"> </span></div>
+            <select id="home">
+              <option value="0">Rent</option><option value="2">Mortgage</option><option value="1" selected>Own</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-row"><label>Employment length</label><span class="fval mono" id="v-emp">10 yrs</span></div>
+          <input type="range" id="emp" min="0" max="20" step="1" value="10">
+        </div>
+        <div class="field">
+          <div class="field-row"><label>Credit history length</label><span class="fval mono" id="v-hist">5 yrs</span></div>
+          <input type="range" id="hist" min="0" max="5" step="1" value="5">
+        </div>
+        <div class="field">
+          <div class="field-row"><label>Prior defaults on file</label><span class="fval mono" id="v-defaults">0</span></div>
+          <input type="range" id="defaults" min="0" max="3" step="1" value="0">
+        </div>
+      </div>
+
+      <div class="demo-output">
+        <p class="eyebrow">Probability of default</p>
+        <div class="pd-readout">
+          <div class="pd-num" id="pd-num" style="color:var(--approve-bright);">0.7%</div>
+          <div class="pd-lbl">Loan-to-income: <span id="lti-val">6%</span></div>
+        </div>
+        <div class="stamp approve" id="stamp">APPROVE</div>
+        <div class="reasons" id="reasons"></div>
+      </div>
+      <div class="demo-disclaimer">Illustrative reconstruction for this showcase — not the production model artifact (<span class="mono">credit_risk_model.pkl</span>) from the repo.</div>
+    </div>
+  </div>
+</section>
+
+<section id="validation">
+  <div class="wrap">
+    <div class="section-head"><span class="section-num">04</span><h2>Checked against five real profiles</h2></div>
+    <table class="cases">
+      <thead><tr><th>Profile</th><th>Probability of default</th><th>Decision</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Perfect borrower</td><td class="pd">0.40%</td><td>Approve</td><td class="ok">✓ correct</td></tr>
+        <tr><td>Good borrower</td><td class="pd">0.52%</td><td>Approve</td><td class="ok">✓ correct</td></tr>
+        <tr><td>Moderate risk borrower</td><td class="pd">9.79%</td><td>Approve</td><td class="ok">✓ correct</td></tr>
+        <tr><td>High risk borrower</td><td class="pd">99.46%</td><td>Reject</td><td class="ok">✓ correct</td></tr>
+        <tr><td>Worst case borrower</td><td class="pd">99.42%</td><td>Reject</td><td class="ok">✓ correct</td></tr>
+      </tbody>
+    </table>
+
+    <div class="metric-row">
+      <div class="metric-card"><div class="v">0.9241</div><div class="k">Validation AUC</div></div>
+      <div class="metric-card"><div class="v">0.9237</div><div class="k">Test AUC</div></div>
+      <div class="metric-card"><div class="v">64%</div><div class="k">Defaulters caught (recall)</div></div>
+      <div class="metric-card"><div class="v">8%</div><div class="k">Good borrowers wrongly flagged</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="honest" style="border-bottom:none;">
+  <div class="wrap">
+    <div class="section-head"><span class="section-num">05</span><h2>Where this model stops</h2></div>
+    <div class="footnote-grid">
+      <div>
+        <h3>By design, it does not</h3>
+        <ul>
+          <li>Guarantee accuracy — no model can.</li>
+          <li>Consider gender, race, or other demographic factors.</li>
+          <li>Replace human judgment on borderline cases.</li>
+          <li>Optimize the loan amount itself, only assess the one requested.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Known limitations</h3>
+        <ul>
+          <li>Recall sits at 64% — about a third of true defaulters slip through.</li>
+          <li>Trained on U.S. data; may not transfer to other markets as-is.</li>
+          <li>No alternative data yet (UPI, GST, telecom) for thin-file applicants.</li>
+          <li>Static weights — doesn't adapt as economic conditions shift.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="meta">Jahnvi Paliwal · CreditRisk AI v1.0.0 · June 2026 · dataset: Kaggle Credit Risk Dataset</div>
+    <a class="cta-btn" href="https://github.com/JahnviPaliwal/CreditRisk-AI" target="_blank" rel="noopener">View the repo</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const inputs = ['income','loan','rate','grade','home','emp','hist','defaults'].reduce((o,id)=>{o[id]=$(id); return o;},{});
+
+  function fmtMoney(n){ return '$' + Number(n).toLocaleString(); }
+  const gradeLabel = {1:'A',2:'B',3:'C',4:'D',5:'E',6:'F'};
+  const homeLabel = {0:'Rent',1:'Own',2:'Mortgage'};
+
+  function sigmoid(z){ return 1/(1+Math.exp(-z)); }
+
+  function compute(){
+    const income = +inputs.income.value;
+    const loan = +inputs.loan.value;
+    const rate = +inputs.rate.value;
+    const grade = +inputs.grade.value;
+    const home = +inputs.home.value;
+    const emp = +inputs.emp.value;
+    const hist = +inputs.hist.value;
+    const defaults = +inputs.defaults.value;
+
+    const lti = Math.min(loan/income, 1);
+    const gradeTerm   = 0.45 * (grade-1);
+    const homeTerm    = home===0 ? 0.9 : (home===2 ? 0.36 : 0);
+    const defaultsTerm= 1.1 * defaults;
+    const rateTerm     = 0.06 * rate;
+    const histTerm    = -0.05 * hist;
+    const incomeTerm  = -0.000008 * income;
+    const empTerm     = -0.02 * emp;
+    const ltiTerm     = 6.0 * lti;
+
+    const z = -4.5 + ltiTerm + gradeTerm + homeTerm + defaultsTerm + rateTerm + histTerm + incomeTerm + empTerm;
+    const pd = sigmoid(z);
+
+    // labels for display panel
+    inputs.income.parentElement && null;
+    $('v-income').textContent = fmtMoney(income);
+    $('v-loan').textContent = fmtMoney(loan);
+    $('v-rate').textContent = rate.toFixed(1) + '%';
+    $('v-grade').textContent = gradeLabel[grade];
+    $('v-home').textContent = homeLabel[home];
+    $('v-emp').textContent = emp + ' yrs';
+    $('v-hist').textContent = hist + ' yrs';
+    $('v-defaults').textContent = defaults;
+    $('lti-val').textContent = Math.round(lti*100) + '%';
+
+    const pdPct = pd*100;
+    const pdEl = $('pd-num');
+    pdEl.textContent = (pdPct<1 ? pdPct.toFixed(2) : pdPct.toFixed(1)) + '%';
+
+    const stamp = $('stamp');
+    let decision, colorClass;
+    if(pdPct < 30){ decision='APPROVE'; colorClass='approve'; }
+    else if(pdPct < 50){ decision='REVIEW'; colorClass='review'; }
+    else { decision='REJECT'; colorClass='reject'; }
+    stamp.textContent = decision;
+    stamp.className = 'stamp ' + colorClass;
+    pdEl.style.color = colorClass==='approve' ? 'var(--approve-bright)' : (colorClass==='review' ? '#e0a861' : '#d68674');
+
+    // reasons: rank terms by magnitude
+    const terms = [
+      {label:'Loan-to-income ratio of '+Math.round(lti*100)+'%', v:ltiTerm},
+      {label:'Credit grade '+gradeLabel[grade], v:gradeTerm},
+      {label: home===0?'Renting, no home equity':(home===2?'Mortgage on file':'Owns home outright'), v: home===1? -0.3 : homeTerm},
+      {label:defaults+' prior default(s) on file', v: defaults===0? -0.2 : defaultsTerm},
+      {label:rate.toFixed(1)+'% interest rate', v:rateTerm},
+      {label:hist+' years of credit history', v:histTerm},
+      {label:fmtMoney(income)+' annual income', v:incomeTerm},
+      {label:emp+' years employed', v:empTerm},
+    ];
+    terms.sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+    const top3 = terms.slice(0,3);
+    const reasonsEl = $('reasons');
+    reasonsEl.innerHTML = top3.map(t=>{
+      const up = t.v >= 0;
+      return '<div class="reason-line"><span class="arrow '+(up?'up':'down')+'">'+(up?'▲':'▼')+'</span><span>'+t.label+' '+(up?'increases':'decreases')+' risk</span></div>';
+    }).join('');
+  }
+
+  Object.values(inputs).forEach(el=>el.addEventListener('input', compute));
+  compute();
+})();
+</script>
+
+</body>
+</html>
